@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Placement Management System - Company Recruiter Portal</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f6fb;color:#1f2937}
+header{background:#172554;color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:22px;margin:0}
+button{border:0;border-radius:8px;padding:10px 15px;cursor:pointer;background:#2563eb;color:white;font-weight:600}
+button:disabled{background:#9ca3af;cursor:not-allowed}
+button.secondary{background:#475569}
+button.success{background:#16a34a}
+button.purple{background:#7c3aed}
+button.orange{background:#ea580c}
+main{max-width:1150px;margin:25px auto;padding:0 18px}
+.panel{background:white;border-radius:12px;padding:18px;box-shadow:0 2px 9px #0f172a0d;margin-bottom:20px}
+h2{margin-top:0;font-size:21px}
+h3{margin:0 0 12px}
+label{display:block;font-weight:600;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:7px;font:inherit;background:white}
+textarea{min-height:60px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.job-card,.applicant-card{background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:15px;position:relative}
+.job-card p,.applicant-card p{margin:6px 0;overflow-wrap:anywhere;font-size:14px}
+.status{display:inline-block;padding:4px 8px;border-radius:12px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:bold}
+.note{color:#64748b;font-size:14px}
+.success{color:#047857}
+.error{color:#b91c1c}
+
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);z-index:1000;justify-content:center;align-items:center;padding:20px}
+.modal-content{background:white;border-radius:14px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3)}
+.compare-table{width:100%;border-collapse:collapse;margin-top:15px}
+.compare-table th,.compare-table td{border:1px solid #e2e8f0;padding:12px;text-align:left;font-size:14px}
+.compare-table th{background:#f1f5f9;color:#0f172a}
+.compare-table tr:nth-child(even){background:#f8fafc}
+.badge-rank{background:#16a34a;color:white;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Placement Management System - Recruiter Portal</h1>
+  <div>
+    <span id="welcome">Company Dashboard</span>
+    <button class="secondary" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Post a New Job Opening</h2>
+    <p class="note">Published jobs will instantly appear on student dashboards for AI skill matching.</p>
+    <form id="jobForm">
+      <div class="form-grid">
+        <div><label for="title">Job Role / Title</label><input id="title" placeholder="e.g. Software Engineer" required></div>
+        <div><label for="company">Company Name</label><input id="company" placeholder="e.g. Google" required></div>
+        <div><label for="location">Location</label><input id="location" placeholder="e.g. Bangalore / Remote"></div>
+        <div><label for="salary">Salary / CTC</label><input id="salary" placeholder="e.g. 12 LPA"></div>
+        <div><label for="min_cgpa">Minimum CGPA</label><input id="min_cgpa" type="number" min="0" max="10" step="0.1" value="6.0"></div>
+        <div><label for="max_backlogs">Maximum Backlogs</label><input id="max_backlogs" type="number" min="0" step="1" value="0"></div>
+        <div><label for="allowed_branches">Allowed Branches</label><input id="allowed_branches" value="All"></div>
+      </div>
+      <label for="eligibility">Eligibility Notes</label>
+      <textarea id="eligibility" placeholder="Minimum CGPA 6.0, No active backlogs, CSE/IT preferred."></textarea>
+      <div class="actions"><button type="submit">Post Job Now</button></div>
+      <p id="jobMessage" role="status"></p>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Active Job Listings, AI Auto-Shortlisting & Broadcasts</h2>
+    <p class="note">Run AI shortlisting or broadcast urgent announcements to applicants.</p>
+    <div id="jobsContainer" class="card-grid">Loading jobs...</div>
+  </section>
+
+  <section class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h2 style="margin:0;">Candidate Applications & Head-to-Head Matcher</h2>
+        <p class="note" style="margin:5px 0 0 0;">Check 2 or more candidates below to run a side-by-side AI comparison.</p>
+      </div>
+      <button class="orange" onclick="runComparison()">⚖️ AI Compare Selected Candidates</button>
+    </div>
+    <div id="applicantsContainer" class="card-grid" style="margin-top:15px;">Loading applicants...</div>
+  </section>
+</main>
+
+<div id="compareModal" class="modal-overlay">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0; color:#0f172a;" id="compareModalTitle">⚖️ Candidate Head-to-Head Comparison</h2>
+      <button class="error" onclick="closeCompareModal()">✕ Close</button>
+    </div>
+    <div id="compareTableContainer">Generating comparative metrics...</div>
+  </div>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+let currentUser = null;
+let selectedCandidates = new Set();
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[char]);
+}
+
+function getStoredUser() {
+  const possibleKeys = ["currentUser", "user", "loggedInUser"];
+  for (const key of possibleKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id) return parsed;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "index.html";
+}
+
+async function api(url, options = {}) {
+  const response = await fetch(API_URL + url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || "Request failed.");
+  return data;
+}
+
+function setMessage(id, message, success = false) {
+  const element = document.getElementById(id);
+  element.textContent = message;
+  element.className = success ? "success" : "error";
+}
+
+document.getElementById("jobForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const payload = {
+      title: document.getElementById("title").value.trim(),
+      company: document.getElementById("company").value.trim(),
+      location: document.getElementById("location").value.trim(),
+      salary: document.getElementById("salary").value.trim(),
+      min_cgpa: document.getElementById("min_cgpa").value,
+      max_backlogs: document.getElementById("max_backlogs").value,
+      allowed_branches: document.getElementById("allowed_branches").value.trim(),
+      eligibility: document.getElementById("eligibility").value.trim(),
+      company_id: currentUser.id
+    };
+
+    const result = await api("/jobs", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+
+    setMessage("jobMessage", result.message || "Job posted successfully!", true);
+    document.getElementById("jobForm").reset();
+    await loadCompanyJobs();
+  } catch (error) {
+    setMessage("jobMessage", error.message);
+  }
+});
+
+async function loadCompanyJobs() {
+  const container = document.getElementById("jobsContainer");
+  try {
+    const jobs = await api("/jobs");
+    container.innerHTML = "";
+    if (jobs.length === 0) {
+      container.innerHTML = `<p class="note">No jobs posted yet.</p>`;
+      return;
+    }
+    jobs.forEach(job => {
+      const card = document.createElement("div");
+      card.className = "job-card";
+      card.innerHTML = `
+        <h3 style="margin:0 0 6px 0; color:#1e293b;">${escapeHtml(job.job_role || job.title)}</h3>
+        <p><strong>Company:</strong> ${escapeHtml(job.company)}</p>
+        <p><strong>Location:</strong> ${escapeHtml(job.location || "Remote/TBD")}</p>
+        <p><strong>Salary:</strong> ${escapeHtml(job.salary || "Competitive")}</p>
+        <p><strong>Criteria:</strong> Min CGPA ${job.min_cgpa ?? job.minimum_cgpa ?? 6.0} | Max Backlogs ${job.max_backlogs ?? 0}</p>
+        <div class="actions">
+          <button class="purple" onclick="autoShortlist(${job.id})">🤖 AI Auto-Shortlist</button>
+          <button style="background:#0284c7;" onclick="sendBroadcast(${job.id})">📢 Broadcast Alert</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.textContent = "Could not load jobs.";
+  }
+}
+
+async function autoShortlist(jobId) {
+  if (!confirm("Run AI Auto-Shortlist on all applicants for this job?")) return;
+  try {
+    const res = await api("/company/job/" + jobId + "/auto-shortlist", { method: "POST" });
+    alert(res.message);
+    await loadApplicants();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function sendBroadcast(jobId) {
+  const msg = prompt("Enter announcement message to broadcast to all applicants of this job:");
+  if (!msg || !msg.trim()) return;
+
+  try {
+    const res = await api("/company/job/" + jobId + "/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg.trim() })
+    });
+    alert(res.message);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function toggleSelectCandidate(studentId) {
+  if (selectedCandidates.has(studentId)) {
+    selectedCandidates.delete(studentId);
+  } else {
+    selectedCandidates.add(studentId);
+  }
+}
+
+async function loadApplicants() {
+  const container = document.getElementById("applicantsContainer");
+  try {
+    const apps = await api("/all-applications");
+    container.innerHTML = "";
+    if (apps.length === 0) {
+      container.innerHTML = `<p class="note">No candidate applications received yet.</p>`;
+      return;
+    }
+    apps.forEach(app => {
+      const card = document.createElement("div");
+      card.className = "applicant-card";
+      
+      let statusColor = "#1e40af";
+      let statusBg = "#dbeafe";
+      const status = (app.status || "Applied").toLowerCase();
+      if (status === "shortlisted") { statusColor = "#92400e"; statusBg = "#fef3c7"; }
+      else if (status === "selected") { statusColor = "#166534"; statusBg = "#dcfce7"; }
+      else if (status === "rejected") { statusColor = "#991b1b"; statusBg = "#fee2e2"; }
+
+      const isChecked = selectedCandidates.has(app.student_id) ? "checked" : "";
+
+      card.innerHTML = `
+        <div style="position:absolute; top:12px; right:12px;">
+          <input type="checkbox" style="width:18px; height:18px; cursor:pointer;" ${isChecked} onchange="toggleSelectCandidate(${app.student_id})">
+        </div>
+        <h3 style="margin:0 0 6px 0; color:#1e293b; padding-right:25px;">${escapeHtml(app.student_name)} (${escapeHtml(app.branch || "Branch")})</h3>
+        <p><strong>Email:</strong> ${escapeHtml(app.student_email)}</p>
+        <p><strong>Applied Role:</strong> ${escapeHtml(app.job_title)} at ${escapeHtml(app.company)}</p>
+        <p><strong>CGPA:</strong> ${escapeHtml(app.cgpa)} | <strong>Backlogs:</strong> ${escapeHtml(app.backlogs)}</p>
+        <p><strong>Status:</strong> <span class="status" style="background:${statusBg}; color:${statusColor};">${escapeHtml(app.status)}</span></p>
+        
+        <div class="actions" style="margin-top:10px;">
+          <button class="secondary" onclick="updateStatus(${app.application_id}, 'Shortlisted')">Shortlist</button>
+          <button class="success" onclick="updateStatus(${app.application_id}, 'Selected')">Select</button>
+          <button style="background:#dc2626;" onclick="updateStatus(${app.application_id}, 'Rejected')">Reject</button>
+          ${app.status === 'Selected' ? `<button class="purple" onclick="downloadOffer(${app.application_id})">📄 Offer Letter</button>` : ""}
+          <button class="secondary" style="background:#0284c7;" onclick="submitScorecard(${app.application_id})">📋 Scorecard</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.textContent = "Could not load applicants.";
+  }
+}
+
+async function updateStatus(appId, newStatus) {
+  try {
+    await api("/applications/" + appId + "/status", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({status: newStatus})
+    });
+    alert("Application status updated to " + newStatus);
+    await loadApplicants();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function downloadOffer(appId) {
+  window.open(API_URL + "/applications/" + appId + "/offer-letter", "_blank");
+}
+
+async function submitScorecard(appId) {
+  const tech = prompt("Enter Technical Score (1–10):", "8");
+  if (tech === null) return;
+  const comm = prompt("Enter Communication Score (1–10):", "8");
+  if (comm === null) return;
+  const rec = prompt("Enter Hire Recommendation (Strong Hire / Hire / Hold / Reject):", "Hire");
+  if (rec === null) return;
+  const notes = prompt("Enter feedback notes:", "Good problem solving skills.");
+
+  try {
+    const res = await api("/applications/" + appId + "/scorecard", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        technical_score: Number(tech),
+        communication_score: Number(comm),
+        recommendation: rec,
+        notes: notes
+      })
+    });
+    alert(res.message);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function runComparison() {
+  const ids = Array.from(selectedCandidates);
+  if (ids.length < 2) {
+    alert("Please check at least 2 candidates using the checkboxes on their cards to run a side-by-side comparison.");
+    return;
+  }
+
+  document.getElementById("compareModal").style.display = "flex";
+  const container = document.getElementById("compareTableContainer");
+  container.innerHTML = "Calculating AI metrics & matrix...";
+
+  try {
+    const res = await api("/company/compare-candidates", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ student_ids: ids })
+    });
+
+    document.getElementById("compareModalTitle").textContent = `⚖️ AI Candidate Matrix: ${res.job_title}`;
+
+    let html = `
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Candidate Name</th>
+            <th>Branch</th>
+            <th>CGPA</th>
+            <th>Backlogs</th>
+            <th>Verified Skills</th>
+            <th>AI Match Score</th>
+            <th>Overall Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    res.candidates.forEach((c, index) => {
+      const rankBadge = index === 0 ? `<span class="badge-rank">👑 Top Choice</span>` : `#${index + 1}`;
+      html += `
+        <tr>
+          <td>${rankBadge}</td>
+          <td><strong>${escapeHtml(c.name)}</strong><br><span style="font-size:12px; color:#64748b;">${escapeHtml(c.email)}</span></td>
+          <td>${escapeHtml(c.branch)}</td>
+          <td><strong>${escapeHtml(c.cgpa)}</strong></td>
+          <td>${c.backlogs === 0 ? '<span style="color:#16a34a; font-weight:bold;">0 (Clear)</span>' : `<span style="color:#dc2626;">${c.backlogs}</span>`}</td>
+          <td style="font-size:12px;">${escapeHtml(c.skills)}</td>
+          <td><strong style="color:#2563eb;">${c.ai_match_score}%</strong></td>
+          <td><strong style="font-size:16px; color:#7c3aed;">${c.overall_rating} / 100</strong></td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+  } catch (err) {
+    container.textContent = "Error loading comparison matrix: " + err.message;
+  }
+}
+
+function closeCompareModal() {
+  document.getElementById("compareModal").style.display = "none";
+}
+
+(async function init() {
+  currentUser = getStoredUser();
+  if (!currentUser || !currentUser.id) {
+    window.location.href = "index.html";
+    return;
+  }
+  document.getElementById("welcome").textContent = "Welcome, " + (currentUser.name || "Recruiter");
+  document.getElementById("company").value = currentUser.name || "";
+  await Promise.all([loadCompanyJobs(), loadApplicants()]);
+})();
+</script>
+</body>
+</html>

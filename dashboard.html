@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Placement Management System - Student Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f6fb;color:#1f2937}
+header{background:#172554;color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:22px;margin:0}
+button{border:0;border-radius:8px;padding:10px 15px;cursor:pointer;background:#2563eb;color:white;font-weight:600}
+button:disabled{background:#9ca3af;cursor:not-allowed}
+button.secondary{background:#475569}
+button.danger{background:#dc2626}
+main{max-width:1150px;margin:25px auto;padding:0 18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.stat,.panel,.job-card,.application-card{background:white;border-radius:12px;padding:18px;box-shadow:0 2px 9px #0f172a0d}
+.stat strong{display:block;font-size:26px;margin-top:7px;color:#1d4ed8}
+.layout{display:grid;grid-template-columns:1fr;gap:20px}
+h2{margin-top:0;font-size:21px}
+h3{margin:0 0 12px}
+label{display:block;font-weight:600;margin:12px 0 5px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:7px;font:inherit;background:white}
+textarea{min-height:70px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#jobsContainer,#applicationsContainer{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.job-card p,.application-card p{margin:7px 0;overflow-wrap:anywhere}
+.note{color:#64748b;font-size:14px}
+.status{display:inline-block;padding:5px 9px;border-radius:15px;background:#dbeafe;color:#1e40af;font-size:13px;font-weight:bold}
+.error{color:#b91c1c}
+.success{color:#047857}
+.section-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Placement Management System</h1>
+  <div>
+    <span id="welcome">Student Dashboard</span>
+    <button class="secondary" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat">Available Jobs<strong id="jobCount">0</strong></div>
+    <div class="stat">My Applications<strong id="applicationCount">0</strong></div>
+    <div class="stat">Your CGPA<strong id="cgpaStat">—</strong></div>
+    <div class="stat">Your Backlogs<strong id="backlogStat">—</strong></div>
+  </div>
+
+  <div class="layout">
+    <!-- STUDENT NOTIFICATIONS FEED WIDGET -->
+    <section class="panel">
+      <div class="section-heading">
+        <h2>📢 Real-Time Placement Alerts & Notifications</h2>
+        <button class="secondary" onclick="loadNotifications()">Refresh Notifications</button>
+      </div>
+      <div id="notificationsContainer" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+        Loading notifications...
+      </div>
+    </section>
+
+    <!-- AI READINESS WIDGET -->
+    <section class="panel" style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: white;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="color:white; margin:0;">AI Placement Readiness Score</h2>
+          <p style="color:#c7d2fe; font-size:14px; margin:5px 0 0 0;">Real-time evaluation based on academic, skill, & resume metrics.</p>
+        </div>
+        <div style="font-size:36px; font-weight:bold; color:#818cf8;" id="readinessScore">—</div>
+      </div>
+      <div id="readinessProgressContainer" style="background:#4338ca; height:10px; border-radius:5px; margin:15px 0; overflow:hidden;">
+        <div id="readinessBar" style="background:#4ade80; width:0%; height:100%; transition:width 0.6s ease;"></div>
+      </div>
+      <div id="readinessFeedback" style="font-size:13px; color:#e0e7ff; line-height:1.5;">Evaluating...</div>
+    </section>
+
+    <!-- AI SALARY PREDICTOR WIDGET -->
+    <section class="panel" style="background: linear-gradient(135deg, #065f46, #047857); color: white;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="color:white; margin:0;">💰 AI Expected Salary & CTC Predictor</h2>
+          <p style="color:#a7f3d0; font-size:14px; margin:5px 0 0 0;">Estimated placement package based on your CGPA and skill stack.</p>
+        </div>
+        <div style="font-size:32px; font-weight:bold; color:#6ee7b7;" id="salaryStat">— LPA</div>
+      </div>
+      <div id="salaryDetails" style="font-size:13px; color:#ecfdf5; margin-top:12px;">Loading prediction...</div>
+    </section>
+
+    <!-- UPCOMING INTERVIEWS SECTION -->
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Upcoming Scheduled Interviews</h2>
+        <button class="secondary" onclick="loadInterviews()">Refresh Schedule</button>
+      </div>
+      <div id="interviewsContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:10px;">
+        Loading interviews...
+      </div>
+    </section>
+
+    <!-- SKILL GAP & LEARNING WIDGET -->
+    <section class="panel">
+      <div class="section-heading">
+        <h2>AI Skill Gap & Recommended Learning Paths</h2>
+        <button class="secondary" onclick="loadSkillRecommendations()">Refresh</button>
+      </div>
+      <p class="note">Skills needed in active job listings that are currently missing from your profile:</p>
+      <div id="skillsContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-top:10px;">
+        Loading recommendations...
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>My Profile</h2>
+      <p class="note">Save your branch, CGPA, backlogs, and skills for AI job matching.</p>
+      <form id="profileForm">
+        <div class="form-grid">
+          <div><label for="name">Full name</label><input id="name" required></div>
+          <div><label for="email">Email</label><input id="email" readonly></div>
+          <div><label for="roll_number">Roll number</label><input id="roll_number"></div>
+          <div><label for="branch">Branch</label>
+            <select id="branch">
+              <option value="">Select branch</option>
+              <option>AI&DS</option><option>CSE</option><option>COE</option>
+              <option>IT</option><option>ECE</option><option>Other</option>
+            </select>
+          </div>
+          <div><label for="semester">Semester</label><input id="semester" placeholder="e.g. 5"></div>
+          <div><label for="cgpa">CGPA (0–10)</label><input id="cgpa" type="number" min="0" max="10" step="0.01"></div>
+          <div><label for="backlogs">Current backlogs</label><input id="backlogs" type="number" min="0" step="1"></div>
+          <div><label for="phone">Phone</label><input id="phone"></div>
+          <div><label for="linkedin">LinkedIn URL</label><input id="linkedin" type="url"></div>
+          <div><label for="github">GitHub URL</label><input id="github" type="url"></div>
+        </div>
+        <label for="skills">Skills (separated by comma)</label>
+        <textarea id="skills" placeholder="Python, SQL, Machine Learning, React..."></textarea>
+        <div class="actions"><button type="submit">Save Profile</button></div>
+        <p id="profileMessage" role="status"></p>
+      </form>
+
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
+      <h3>Resume (PDF)</h3>
+      <p id="resumeName" class="note">No resume uploaded yet.</p>
+      <form id="resumeForm">
+        <label for="resume">Choose PDF resume (max 10 MB)</label>
+        <input id="resume" type="file" accept="application/pdf,.pdf" required>
+        <div class="actions"><button type="submit">Upload Resume</button></div>
+      </form>
+      <div class="actions">
+        <button class="secondary" id="viewResume" type="button" onclick="openResume()">View Resume</button>
+        <button class="secondary" id="downloadResume" type="button" onclick="downloadResume()">Download Resume</button>
+        <button class="danger" id="deleteResume" type="button" onclick="removeResume()">Delete Resume</button>
+      </div>
+      <p id="resumeMessage" role="status"></p>
+
+      <!-- AI RESUME BULLET OPTIMIZER WIDGET -->
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
+      <h3>✨ AI Resume Bullet Point Optimizer</h3>
+      <p class="note">Paste a raw project or experience sentence to transform it into ATS-optimized, high-impact bullet points.</p>
+      
+      <div style="display:grid; grid-template-columns:1fr; gap:10px;">
+        <input id="targetRole" placeholder="Target Role (e.g. Full Stack Developer, Data Analyst)" value="Software Engineer">
+        <textarea id="rawBulletDraft" placeholder="e.g., Created a web app using Flask and SQLite to manage placements."></textarea>
+        <div class="actions">
+          <button type="button" style="background: linear-gradient(135deg, #7c3aed, #4c1d95);" onclick="enhanceResumeBullet()">✨ AI Optimize & Enhance</button>
+        </div>
+      </div>
+      
+      <div id="bulletResultsContainer" style="display:none; margin-top:15px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:15px;">
+        <h4 style="margin:0 0 10px 0; color:#4c1d95;">Suggested ATS-Optimized Bullets (Click to Copy):</h4>
+        <div id="bulletSuggestionsList"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Placement Opportunities (AI Ranked)</h2>
+        <button class="secondary" onclick="loadJobs()">Refresh Jobs</button>
+      </div>
+      <p class="note">Jobs are automatically matched and ranked by your skills using AI.</p>
+      <div id="jobsContainer">Loading jobs...</div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <h2>My Applications</h2>
+        <button class="secondary" onclick="loadApplications()">Refresh Applications</button>
+      </div>
+      <div id="applicationsContainer">Loading applications...</div>
+    </section>
+  </div>
+</main>
+
+<script>
+const API_URL = "http://127.0.0.1:5000";
+let currentUser = null;
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[char]);
+}
+
+function getStoredUser() {
+  const possibleKeys = ["currentUser", "user", "loggedInUser"];
+  for (const key of possibleKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id) return parsed;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "index.html";
+}
+
+async function api(url, options = {}) {
+  const response = await fetch(API_URL + url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || "Request failed.");
+  return data;
+}
+
+function setMessage(id, message, success = false) {
+  const element = document.getElementById(id);
+  element.textContent = message;
+  element.className = success ? "success" : "error";
+}
+
+async function loadProfile() {
+  const profile = await api("/student/" + currentUser.id);
+  currentUser = {...currentUser, ...profile};
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+  for (const key of ["name","email","roll_number","branch","semester",
+                      "cgpa","backlogs","phone","linkedin","github","skills"]) {
+    const element = document.getElementById(key);
+    if (element) element.value = profile[key] ?? "";
+  }
+
+  document.getElementById("welcome").textContent = "Welcome, " + (profile.name || "Student");
+  document.getElementById("cgpaStat").textContent = profile.cgpa ?? "—";
+  document.getElementById("backlogStat").textContent = profile.backlogs ?? "—";
+
+  const hasResume = Boolean(profile.resume_filename || profile.resume);
+  document.getElementById("resumeName").textContent =
+    hasResume ? "Uploaded: " + (profile.resume_filename || profile.resume) : "No resume uploaded yet.";
+  for (const id of ["viewResume","downloadResume","deleteResume"]) {
+    document.getElementById(id).disabled = !hasResume;
+  }
+}
+
+document.getElementById("profileForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const payload = {
+      name: document.getElementById("name").value.trim(),
+      roll_number: document.getElementById("roll_number").value.trim(),
+      branch: document.getElementById("branch").value,
+      semester: document.getElementById("semester").value.trim(),
+      cgpa: document.getElementById("cgpa").value,
+      backlogs: document.getElementById("backlogs").value,
+      phone: document.getElementById("phone").value.trim(),
+      linkedin: document.getElementById("linkedin").value.trim(),
+      github: document.getElementById("github").value.trim(),
+      skills: document.getElementById("skills").value.trim()
+    };
+
+    const result = await api("/student/" + currentUser.id, {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+
+    currentUser = {...currentUser, ...(result.user || {})};
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+    setMessage("profileMessage", "Profile saved successfully.", true);
+    await loadProfile();
+    await loadJobs();
+    await loadReadiness();
+    await loadSalaryPrediction();
+    await loadSkillRecommendations();
+  } catch (error) {
+    setMessage("profileMessage", error.message);
+  }
+});
+
+async function loadReadiness() {
+  try {
+    const data = await api("/student/" + currentUser.id + "/readiness");
+    const score = data.readiness_score || 0;
+    document.getElementById("readinessScore").textContent = score + "%";
+    document.getElementById("readinessBar").style.width = score + "%";
+    
+    const feedbackList = (data.feedback || []).map(item => `• ${escapeHtml(item)}`).join("<br>");
+    document.getElementById("readinessFeedback").innerHTML = `<strong>Status Tier: ${escapeHtml(data.tier)}</strong><br>${feedbackList}`;
+  } catch (err) {
+    document.getElementById("readinessFeedback").textContent = "Could not compute readiness score.";
+  }
+}
+
+async function loadSalaryPrediction() {
+  try {
+    const data = await api("/student/" + currentUser.id + "/salary-prediction");
+    document.getElementById("salaryStat").textContent = data.estimated_lpa + " LPA";
+    document.getElementById("salaryDetails").innerHTML = `<strong>Market Tier: ${escapeHtml(data.market_tier)}</strong><br>${escapeHtml(data.factors)}`;
+  } catch (err) {
+    document.getElementById("salaryDetails").textContent = "Could not compute salary prediction.";
+  }
+}
+
+async function loadInterviews() {
+  const container = document.getElementById("interviewsContainer");
+  try {
+    const interviews = await api("/student/" + currentUser.id + "/interviews");
+    container.innerHTML = "";
+    if (interviews.length === 0) {
+      container.innerHTML = `<p class="note">No interviews scheduled yet.</p>`;
+      return;
+    }
+    interviews.forEach(inv => {
+      const card = document.createElement("div");
+      card.style.cssText = "background:#f8fafc; border:1px solid #cbd5e1; padding:12px; border-radius:8px;";
+      card.innerHTML = `
+        <h4 style="margin:0 0 5px 0; color:#1e293b;">${escapeHtml(inv.job_role)}</h4>
+        <p style="margin:3px 0; font-size:13px;"><strong>Company:</strong> ${escapeHtml(inv.company)}</p>
+        <p style="margin:3px 0; font-size:13px;"><strong>Date & Time:</strong> 📅 ${escapeHtml(inv.interview_date)} at ⏰ ${escapeHtml(inv.interview_time)}</p>
+        <p style="margin:3px 0; font-size:13px;"><strong>Location / Link:</strong> ${escapeHtml(inv.location_or_link || "TBD")}</p>
+        ${inv.notes ? `<p style="margin:3px 0; font-size:12px; color:#64748b;"><em>Note: ${escapeHtml(inv.notes)}</em></p>` : ""}
+      `;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.textContent = "Could not load interviews.";
+  }
+}
+
+async function loadSkillRecommendations() {
+  const container = document.getElementById("skillsContainer");
+  try {
+    const data = await api("/student/" + currentUser.id + "/skill-recommendations");
+    container.innerHTML = "";
+    if (!data.recommended_skills || data.recommended_skills.length === 0) {
+      container.innerHTML = `<p class="note">Great job! Your profile covers the key skills required in active listings.</p>`;
+      return;
+    }
+    data.recommended_skills.forEach(rec => {
+      const item = document.createElement("div");
+      item.style.cssText = "background:#f1f5f9; border:1px solid #cbd5e1; padding:12px; border-radius:8px;";
+      item.innerHTML = `
+        <h4 style="margin:0 0 4px 0; color:#0f172a;">⚡ ${escapeHtml(rec.skill)}</h4>
+        <p style="margin:2px 0; font-size:12px; color:#475569;">${escapeHtml(rec.reason)}</p>
+        <p style="margin:6px 0 0 0; font-size:12px; font-weight:bold; color:#2563eb;">${escapeHtml(rec.learning_path)}</p>
+      `;
+      container.appendChild(item);
+    });
+  } catch (err) {
+    container.textContent = "Could not load recommendations.";
+  }
+}
+
+async function loadNotifications() {
+  const container = document.getElementById("notificationsContainer");
+  try {
+    const notifications = await api("/student/" + currentUser.id + "/notifications");
+    container.innerHTML = "";
+    if (notifications.length === 0) {
+      container.innerHTML = `<p class="note">No notifications yet.</p>`;
+      return;
+    }
+    notifications.forEach(n => {
+      const alertBox = document.createElement("div");
+      alertBox.style.cssText = "background:#eff6ff; border-left:4px solid #2563eb; padding:10px 14px; border-radius:6px; font-size:14px;";
+      alertBox.innerHTML = `<div>${escapeHtml(n.message)}</div><div style="font-size:11px; color:#64748b; margin-top:4px;">${escapeHtml(n.created_at || "")}</div>`;
+      container.appendChild(alertBox);
+    });
+  } catch (err) {
+    container.textContent = "Could not load notifications.";
+  }
+}
+
+async function checkAtsScore(jobId) {
+  try {
+    const data = await api("/student/" + currentUser.id + "/job/" + jobId + "/ats-score");
+    alert(`🎯 ATS Compatibility Score: ${data.ats_score}%\n\nMatched: ${data.matched_keywords.join(", ") || "None"}\nMissing: ${data.missing_keywords.join(", ") || "None"}\n\nTip: ${data.suggestion}`);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function openMockInterview(jobId) {
+  try {
+    const data = await api("/student/" + currentUser.id + "/job/" + jobId + "/mock-interview");
+    let output = `🎯 AI Mock Interview Prep for ${data.job_title} at ${data.company}\n\n`;
+    data.mock_questions.forEach((q, index) => {
+      output += `Q${index + 1}: ${q.question}\n💡 Tip: ${q.tip}\n\n--------------------------------------------------\n\n`;
+    });
+    alert(output);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function enhanceResumeBullet() {
+  const draft = document.getElementById("rawBulletDraft").value.trim();
+  const role = document.getElementById("targetRole").value.trim();
+
+  if (!draft) {
+    alert("Please enter a raw project draft or sentence to optimize.");
+    return;
+  }
+
+  const resultsContainer = document.getElementById("bulletResultsContainer");
+  const list = document.getElementById("bulletSuggestionsList");
+  resultsContainer.style.display = "block";
+  list.innerHTML = "Generating ATS-optimized suggestions...";
+
+  try {
+    const data = await api("/student/optimize-bullet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: draft, target_role: role })
+    });
+
+    list.innerHTML = "";
+    data.suggestions.forEach(suggestion => {
+      const box = document.createElement("div");
+      box.style.cssText = "background:white; border:1px solid #e2e8f0; padding:10px; border-radius:6px; margin-bottom:8px; cursor:pointer;";
+      box.title = "Click to copy";
+      box.innerHTML = `<span style="color:#16a34a; font-weight:bold;">• </span>${escapeHtml(suggestion)}`;
+      box.onclick = () => {
+        navigator.clipboard.writeText(suggestion);
+        alert("Copied bullet point to clipboard!");
+      };
+      list.appendChild(box);
+    });
+  } catch (err) {
+    list.textContent = "Could not optimize bullet: " + err.message;
+  }
+}
+
+async function loadJobs() {
+  const container = document.getElementById("jobsContainer");
+  container.textContent = "Loading jobs...";
+
+  try {
+    const [jobs, applications] = await Promise.all([
+      api("/student/" + currentUser.id + "/eligible-jobs"),
+      api("/applications/" + currentUser.id)
+    ]);
+
+    const applicationsByJob = new Map();
+    applications.forEach(application => {
+      applicationsByJob.set(String(application.job_id), application);
+    });
+
+    document.getElementById("jobCount").textContent = jobs.length;
+    container.innerHTML = "";
+
+    if (jobs.length === 0) {
+      container.textContent = "No placement opportunities available.";
+      return;
+    }
+
+    jobs.forEach(job => {
+      const application = applicationsByJob.get(String(job.id));
+      const hasApplied = Boolean(application);
+      const card = document.createElement("article");
+      card.className = "job-card";
+
+      const reasons = Array.isArray(job.eligibility_reasons) ? job.eligibility_reasons : [];
+      const score = job.ai_match_score || 50;
+      const matched = job.matched_skills || [];
+      
+      let badgeColor = "#2563eb";
+      if (score >= 80) badgeColor = "#16a34a";
+      else if (score >= 65) badgeColor = "#d97706";
+
+      let actionHtml;
+      if (hasApplied) {
+        actionHtml = `
+          <p>You have already applied for this job.</p>
+          <p><span class="status">${escapeHtml(application.status || "Applied")}</span></p>
+          <button class="secondary" style="background:#7c3aed; margin-top:6px;" onclick="openMockInterview(${Number(job.id)})">💡 AI Mock Interview Prep</button>
+          <button disabled style="margin-top:6px;">Already Applied</button>`;
+      } else if (job.eligible === true) {
+        actionHtml = `
+          <button onclick="applyForJob(${Number(job.id)})">Apply Now</button>
+          <button class="secondary" style="margin-top:6px;" onclick="checkAtsScore(${Number(job.id)})">Check ATS Resume Score</button>
+          <button class="secondary" style="background:#7c3aed; margin-top:6px;" onclick="openMockInterview(${Number(job.id)})">💡 AI Mock Interview Prep</button>`;
+      } else {
+        actionHtml = `<p class="error">${reasons.map(escapeHtml).join(" • ") || "Complete profile to check eligibility."}</p>
+                      <button class="secondary" style="background:#7c3aed; margin-top:6px;" onclick="openMockInterview(${Number(job.id)})">💡 AI Mock Interview Prep</button>
+                      <button disabled style="margin-top:6px;">Not Eligible</button>`;
+      }
+
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <h3 style="margin:0;">${escapeHtml(job.job_role || job.title || "Untitled position")}</h3>
+            <span style="background:${badgeColor}; color:white; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:bold;">
+                ⚡ ${score}% AI Match
+            </span>
+        </div>
+        <p><strong>Company:</strong> ${escapeHtml(job.company || "-")}</p>
+        <p><strong>Location:</strong> ${escapeHtml(job.location || "-")}</p>
+        <p><strong>Salary:</strong> ${escapeHtml(job.salary || "-")}</p>
+        <p><strong>Minimum CGPA:</strong> ${escapeHtml(job.minimum_cgpa ?? job.min_cgpa ?? "-")}</p>
+        <p><strong>Maximum backlogs:</strong> ${escapeHtml(job.maximum_backlogs ?? job.max_backlogs ?? "-")}</p>
+        <p><strong>Allowed branches:</strong> ${escapeHtml(job.allowed_branches || "All")}</p>
+        ${matched.length > 0 ? `<p style="font-size:12px; color:#166534; background:#f0fdf4; padding:6px; border-radius:6px; margin:8px 0;"><strong>Matched Skills:</strong> ${matched.map(escapeHtml).join(", ")}</p>` : ""}
+        ${actionHtml}`;
+      container.appendChild(card);
+    });
+  } catch (error) {
+    container.textContent = "Could not load jobs: " + error.message;
+  }
+}
+
+async function applyForJob(jobId) {
+  try {
+    const result = await api("/apply", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({student_id: currentUser.id, job_id: Number(jobId)})
+    });
+    alert(result.message || "Application submitted successfully.");
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    await loadJobs();
+    await loadApplications();
+    await loadReadiness();
+    await loadSalaryPrediction();
+    await loadNotifications();
+  }
+}
+
+async function loadApplications() {
+  const container = document.getElementById("applicationsContainer");
+  container.textContent = "Loading applications...";
+
+  try {
+    const applications = await api("/applications/" + currentUser.id);
+    document.getElementById("applicationCount").textContent = applications.length;
+    container.innerHTML = "";
+
+    if (applications.length === 0) {
+      container.textContent = "You have not applied for any jobs yet.";
+      return;
+    }
+
+    applications.forEach(application => {
+      const card = document.createElement("article");
+      card.className = "application-card";
+      
+      const status = (application.status || "Applied").toLowerCase();
+      let step1Active = "active";
+      let step2Active = "";
+      let step3Active = "";
+      let statusColor = "#1e40af";
+      let statusBg = "#dbeafe";
+
+      if (status === "shortlisted") {
+        step2Active = "active";
+        statusColor = "#92400e";
+        statusBg = "#fef3c7";
+      } else if (status === "selected") {
+        step2Active = "active";
+        step3Active = "active";
+        statusColor = "#166534";
+        statusBg = "#dcfce7";
+      } else if (status === "rejected") {
+        statusColor = "#991b1b";
+        statusBg = "#fee2e2";
+      }
+
+      card.innerHTML = `
+        <h3>${escapeHtml(application.job_role || "Job")}</h3>
+        <p><strong>Company:</strong> ${escapeHtml(application.company || "-")}</p>
+        <p><strong>Location:</strong> ${escapeHtml(application.location || "-")}</p>
+        <p><strong>Salary:</strong> ${escapeHtml(application.salary || "-")}</p>
+        
+        <div style="margin: 15px 0 10px 0; padding:10px; background:#f8fafc; border-radius:8px;">
+            <div style="font-size:12px; font-weight:bold; color:#64748b; margin-bottom:8px;">Recruitment Pipeline Progress:</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; position:relative; text-align:center;">
+                <div style="flex:1; font-size:11px; font-weight:bold; color:${step1Active ? '#2563eb' : '#9ca3af'}">
+                    <div style="width:20px; height:20px; border-radius:50%; background:${step1Active ? '#2563eb' : '#e2e8f0'}; color:white; display:flex; align-items:center; justify-content:center; margin:0 auto 4px auto;">✓</div>
+                    Applied
+                </div>
+                <div style="flex:1; font-size:11px; font-weight:bold; color:${step2Active ? '#d97706' : '#9ca3af'}">
+                    <div style="width:20px; height:20px; border-radius:50%; background:${step2Active ? '#d97706' : '#e2e8f0'}; color:white; display:flex; align-items:center; justify-content:center; margin:0 auto 4px auto;">${step2Active ? '✓' : '2'}</div>
+                    Shortlisted
+                </div>
+                <div style="flex:1; font-size:11px; font-weight:bold; color:${step3Active ? '#16a34a' : '#9ca3af'}">
+                    <div style="width:20px; height:20px; border-radius:50%; background:${step3Active ? '#16a34a' : '#e2e8f0'}; color:white; display:flex; align-items:center; justify-content:center; margin:0 auto 4px auto;">${step3Active ? '✓' : '3'}</div>
+                    Selected
+                </div>
+            </div>
+        </div>
+
+        <p><strong>Current Status:</strong> <span class="status" style="background:${statusBg}; color:${statusColor};">${escapeHtml(application.status || "Applied")}</span></p>`;
+      container.appendChild(card);
+    });
+  } catch (error) {
+    container.textContent = "Could not load applications: " + error.message;
+  }
+}
+
+document.getElementById("resumeForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const fileInput = document.getElementById("resume");
+  const file = fileInput.files[0];
+
+  if (!file) return setMessage("resumeMessage", "Choose a PDF file first.");
+  if (!file.name.toLowerCase().endsWith(".pdf")) return setMessage("resumeMessage", "Only PDF resumes are allowed.");
+
+  const formData = new FormData();
+  formData.append("resume", file);
+
+  try {
+    const result = await api("/student/" + currentUser.id + "/resume", {
+      method: "POST",
+      body: formData
+    });
+    setMessage("resumeMessage", result.message, true);
+    fileInput.value = "";
+    await loadProfile();
+    await loadReadiness();
+    await loadSalaryPrediction();
+    await loadSkillRecommendations();
+  } catch (error) {
+    setMessage("resumeMessage", error.message);
+  }
+});
+
+function openResume() {
+  window.open(API_URL + "/student/" + currentUser.id + "/resume", "_blank");
+}
+
+function downloadResume() {
+  window.open(API_URL + "/student/" + currentUser.id + "/resume/download", "_blank");
+}
+
+async function removeResume() {
+  if (!confirm("Delete your uploaded resume?")) return;
+  try {
+    const result = await api("/student/" + currentUser.id + "/resume", { method: "DELETE" });
+    setMessage("resumeMessage", result.message, true);
+    await loadProfile();
+    await loadReadiness();
+    await loadSalaryPrediction();
+  } catch (error) {
+    setMessage("resumeMessage", error.message);
+  }
+}
+
+(async function init() {
+  currentUser = getStoredUser();
+  if (!currentUser || !currentUser.id) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  try {
+    await loadProfile();
+    await Promise.all([loadJobs(), loadApplications(), loadReadiness(), loadSalaryPrediction(), loadInterviews(), loadSkillRecommendations(), loadNotifications()]);
+  } catch (error) {
+    setMessage("profileMessage", error.message);
+  }
+})();
+</script>
+</body>
+</html>

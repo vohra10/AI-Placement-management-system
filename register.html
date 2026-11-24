@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+        }
+
+        .box {
+            width: 400px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            color: #6d5dfc;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #222;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 25px;
+            border: none;
+            border-radius: 8px;
+            background: #6d5dfc;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #5141d9;
+        }
+
+        .login {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .login a {
+            color: #6d5dfc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        #message {
+            text-align: center;
+            margin-top: 15px;
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box">
+
+        <h1>AI Placement Portal</h1>
+        <h2>Create Account</h2>
+
+        <form onsubmit="createAccount(event)">
+
+            <label for="name">Full Name</label>
+            <input
+                type="text"
+                id="name"
+                placeholder="Enter your full name"
+                required
+            >
+
+            <label for="email">Email Address</label>
+            <input
+                type="email"
+                id="email"
+                placeholder="Enter your email address"
+                required
+            >
+
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                placeholder="Create a password"
+                required
+            >
+
+            <label for="role">Role</label>
+            <select id="role" required>
+                <option value="">Select Role</option>
+                <option value="student">Student</option>
+                <option value="company">Company</option>
+            </select>
+
+            <button type="submit">Create Account</button>
+
+        </form>
+
+        <p id="message"></p>
+
+        <p class="login">
+            Already have an account?
+            <a href="index.html">Login here</a>
+        </p>
+
+    </div>
+
+    <script>
+async function createAccount(event) {
+    event.preventDefault();
+
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const role = document.getElementById("role").value;
+    const message = document.getElementById("message");
+
+    try {
+        const response = await fetch("http://127.0.0.1:5000/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password,
+                role: role
+            })
+        });
+
+        const result = await response.json();
+
+        message.innerText = result.message;
+
+        if (result.success) {
+            message.style.color = "green";
+
+            document.querySelector("form").reset();
+        } else {
+            message.style.color = "red";
+        }
+
+    } catch (error) {
+        message.style.color = "red";
+        message.innerText =
+            "Could not connect to backend. Make sure Flask is running.";
+
+        console.error(error);
+    }
+}
+</script>
+
+</body>
+</html>

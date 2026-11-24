@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Applications</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #222;
+        }
+
+        .application-card {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .application-card h2 {
+            margin-top: 0;
+            color: #2563eb;
+        }
+
+        .status {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>My Applications</h1>
+
+    <div id="applications">
+        Loading applications...
+    </div>
+
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+        async function loadApplications() {
+            const container = document.getElementById("applications");
+
+            if (!currentUser || !currentUser.id) {
+                container.innerHTML = `
+                    <p class="error">
+                        Please log in as a student first.
+                    </p>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:5000/applications?student_id=${currentUser.id}`
+                );
+
+                const applications = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(applications.error || "Unable to load applications");
+                }
+
+                if (applications.length === 0) {
+                    container.innerHTML = `
+                        <p>No applications found.</p>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = "";
+
+                applications.forEach(application => {
+                    const card = document.createElement("div");
+                    card.className = "application-card";
+
+                    card.innerHTML = `
+                        <h2>${application.company}</h2>
+                        <p><strong>Job Role:</strong> ${application.job_role}</p>
+                        <p><strong>Location:</strong> ${application.location || "Not specified"}</p>
+                        <p><strong>Salary:</strong> ${application.salary || "Not specified"}</p>
+                        <p><strong>Status:</strong>
+                            <span class="status">
+                                ${application.status}
+                            </span>
+                        </p>
+                    `;
+
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Error loading applications:", error);
+
+                container.innerHTML = `
+                    <p class="error">
+                        Error loading applications. Check whether Flask is running.
+                    </p>
+                `;
+            }
+        }
+
+        loadApplications();
+    </script>
+
+</body>
+</html>
